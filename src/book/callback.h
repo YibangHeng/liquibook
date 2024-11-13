@@ -44,6 +44,7 @@ public:
   enum CbType {
     cb_unknown,
     cb_order_accept,
+    cb_order_accept_and_not_matched,
     cb_order_reject,
     cb_order_fill,
     cb_order_fill_and_no_more,

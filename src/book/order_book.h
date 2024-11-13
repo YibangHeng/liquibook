@@ -408,6 +408,11 @@ OrderBook<OrderPtr>::add(const OrderPtr& order, OrderConditions conditions)
     else
     {
       matched = submit_order(inbound);
+
+      if(!matched) {
+        callbacks_.back().type = Callback<OrderPtr>::CbType::cb_order_accept_and_not_matched;
+      }
+
       // Note the filled qty in the accept callback
       callbacks_[accept_cb_index].quantity = inbound.filled_qty();
 
@@ -1117,10 +1122,12 @@ OrderBook<OrderPtr>::perform_callback(TypedCallback& cb)
       break;
     }
     case TypedCallback::cb_order_accept:
+    case TypedCallback::cb_order_accept_and_not_matched:
       on_accept(cb.order, cb.quantity);
       if(order_listener_)
       {
         order_listener_->on_accept(cb.order);
+        order_listener_->on_accept(cb.order, cb.type == TypedCallback::cb_order_accept);
       }
       break;
     case TypedCallback::cb_order_reject:

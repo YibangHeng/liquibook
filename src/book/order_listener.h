@@ -11,7 +11,11 @@ template <typename OrderPtr>
 class OrderListener {
 public:
   /// @brief callback for an order accept
+  /// @note for compatibility only. on_accept() with param matched is preferred
   virtual void on_accept(const OrderPtr& order) = 0;
+
+  /// @brief callback for an order accept
+  virtual void on_accept(const OrderPtr& order, bool matched) = 0;
 
   /// @brief callback for an order reject
   virtual void on_reject(const OrderPtr& order, const char* reason) = 0;
