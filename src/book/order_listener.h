@@ -12,7 +12,7 @@ class OrderListener {
 public:
   /// @brief callback for an order accept
   /// @note for compatibility only. on_accept() with param matched is preferred
-  virtual void on_accept(const OrderPtr& order) = 0;
+  virtual void on_accept(const OrderPtr& order) {}
 
   /// @brief callback for an order accept
   virtual void on_accept(const OrderPtr& order, bool matched) = 0;
@@ -29,7 +29,7 @@ public:
   virtual void on_fill(const OrderPtr& order, 
                        const OrderPtr& matched_order, 
                        Quantity fill_qty, 
-                       Cost fill_cost) = 0;
+                       Cost fill_cost) {}
 
   /// @brief callback for an order fill
   /// @param order the inbound order
