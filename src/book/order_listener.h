@@ -21,10 +21,23 @@ public:
   /// @param matched_order the matched order
   /// @param fill_qty the quantity of this fill
   /// @param fill_cost the cost of this fill (qty * price)
+  /// @note for compatibility only. on_fill() with param no_more is preferred
   virtual void on_fill(const OrderPtr& order, 
                        const OrderPtr& matched_order, 
                        Quantity fill_qty, 
                        Cost fill_cost) = 0;
+
+  /// @brief callback for an order fill
+  /// @param order the inbound order
+  /// @param matched_order the matched order
+  /// @param fill_qty the quantity of this fill
+  /// @param fill_cost the cost of this fill (qty * price)
+  /// @param no_more true if this is the last fill for this order
+  virtual void on_fill(const OrderPtr& order, 
+                       const OrderPtr& matched_order, 
+                       Quantity fill_qty, 
+                       Cost fill_cost,
+                       bool no_more) = 0;
 
   /// @brief callback for an order cancellation
   virtual void on_cancel(const OrderPtr& order) = 0;

@@ -46,6 +46,7 @@ public:
     cb_order_accept,
     cb_order_reject,
     cb_order_fill,
+    cb_order_fill_and_no_more,
     cb_order_cancel,
     cb_order_cancel_reject,
     cb_order_replace,

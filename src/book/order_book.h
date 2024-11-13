@@ -1051,6 +1051,10 @@ OrderBook<OrderPtr>::callback_now()
       for (auto cb = working.begin(); cb != working.end(); ++cb) {
         try
         {
+          if(cb->type == TypedCallback::cb_order_fill && cb == std::prev(std::prev(working.end())))
+          {
+            cb->type = TypedCallback::cb_order_fill_and_no_more;
+          }
           perform_callback(*cb);
         }
         catch(const std::exception & ex)
@@ -1088,6 +1092,7 @@ OrderBook<OrderPtr>::perform_callback(TypedCallback& cb)
   switch (cb.type) 
   {
     case TypedCallback::cb_order_fill: 
+    case TypedCallback::cb_order_fill_and_no_more:
     {
       Cost fill_cost = cb.price * cb.quantity;
       bool inbound_filled = (cb.flags & (TypedCallback::ff_inbound_filled | TypedCallback::ff_both_filled)) != 0;
@@ -1100,6 +1105,9 @@ OrderBook<OrderPtr>::perform_callback(TypedCallback& cb)
       {
         order_listener_->on_fill(cb.order, cb.matched_order, 
                                 cb.quantity, fill_cost);
+        order_listener_->on_fill(cb.order, cb.matched_order, 
+                                cb.quantity, fill_cost,
+                                cb.type == TypedCallback::cb_order_fill_and_no_more);
       }
       on_trade(this, cb.quantity, fill_cost);
       if(trade_listener_)
