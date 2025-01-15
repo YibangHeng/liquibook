@@ -150,6 +150,9 @@ protected:
   /// @brief perform an individual callback
   virtual void perform_callback(TypedCallback& cb);
 
+  /// @brief perform an individual callback
+  virtual void perform_user_callback(TypedCallback& cb);
+
   /// @brief match a new order to current orders
   /// @param inbound_order the inbound order
   /// @param inbound_price price of the inbound order
@@ -1085,6 +1088,38 @@ OrderBook<OrderPtr>::callback_now()
           }
         }
       }
+      for (auto cb = working.begin(); cb != working.end(); ++cb) {
+        try
+        {
+          if(cb->type == TypedCallback::cb_order_fill && cb == std::prev(std::prev(working.end())))
+          {
+            cb->type = TypedCallback::cb_order_fill_and_no_more;
+          }
+          perform_user_callback(*cb);
+        }
+        catch(const std::exception & ex)
+        {
+          if(logger_)
+          {
+            logger_->log_exception("Caught exception during user callback: ", ex);
+          }
+          else
+          {
+            std::cerr << "Caught exception during user callback: " << ex.what() << std::endl;
+          }
+        }
+        catch(...)
+        {
+          if(logger_)
+          {
+            logger_->log_message("Caught unknown exception during user callback");
+          }
+          else
+          {
+            std::cerr << "Caught unknown exception during user callback" << std::endl;
+          }
+        }
+      }
     }
     handling_callbacks_ = false;
   }
@@ -1106,6 +1141,56 @@ OrderBook<OrderPtr>::perform_callback(TypedCallback& cb)
         cb.quantity, fill_cost,
         inbound_filled,
         matched_filled);
+      on_trade(this, cb.quantity, fill_cost);
+      break;
+    }
+    case TypedCallback::cb_order_accept:
+    case TypedCallback::cb_order_accept_and_not_matched:
+      on_accept(cb.order, cb.quantity);
+      break;
+    case TypedCallback::cb_order_reject:
+      on_reject(cb.order, cb.reject_reason);
+      break;
+    case TypedCallback::cb_order_cancel:
+      on_cancel(cb.order, cb.quantity);
+      break;
+    case TypedCallback::cb_order_cancel_reject:
+      on_cancel_reject(cb.order, cb.reject_reason);
+      break;
+    case TypedCallback::cb_order_replace:
+      on_replace(cb.order, 
+        cb.order->order_qty(), 
+        cb.order->order_qty() + cb.delta,
+        cb.price);
+      break;
+    case TypedCallback::cb_order_replace_reject:
+      on_replace_reject(cb.order, cb.reject_reason);
+      break;
+    case TypedCallback::cb_book_update:
+      on_order_book_change();
+      break;
+    default:
+    {
+      std::stringstream msg;
+      msg << "Unexpected callback type " << cb.type;
+      std::runtime_error(msg.str());
+      break;
+    }
+  }
+}
+
+template <class OrderPtr>
+void
+OrderBook<OrderPtr>::perform_user_callback(TypedCallback& cb)
+{
+  switch (cb.type)
+  {
+    case TypedCallback::cb_order_fill:
+    case TypedCallback::cb_order_fill_and_no_more:
+    {
+      Cost fill_cost = cb.price * cb.quantity;
+      bool inbound_filled = (cb.flags & (TypedCallback::ff_inbound_filled | TypedCallback::ff_both_filled)) != 0;
+      bool matched_filled = (cb.flags & (TypedCallback::ff_matched_filled | TypedCallback::ff_both_filled)) != 0;
       if(order_listener_)
       {
         order_listener_->on_fill(cb.order, cb.matched_order, 
@@ -1114,7 +1199,6 @@ OrderBook<OrderPtr>::perform_callback(TypedCallback& cb)
                                 cb.quantity, fill_cost,
                                 cb.type == TypedCallback::cb_order_fill_and_no_more);
       }
-      on_trade(this, cb.quantity, fill_cost);
       if(trade_listener_)
       {
         trade_listener_->on_trade(this, cb.quantity, fill_cost);
@@ -1123,7 +1207,6 @@ OrderBook<OrderPtr>::perform_callback(TypedCallback& cb)
     }
     case TypedCallback::cb_order_accept:
     case TypedCallback::cb_order_accept_and_not_matched:
-      on_accept(cb.order, cb.quantity);
       if(order_listener_)
       {
         order_listener_->on_accept(cb.order);
@@ -1131,31 +1214,24 @@ OrderBook<OrderPtr>::perform_callback(TypedCallback& cb)
       }
       break;
     case TypedCallback::cb_order_reject:
-      on_reject(cb.order, cb.reject_reason);
       if(order_listener_)
       {
         order_listener_->on_reject(cb.order, cb.reject_reason);
       }
       break;
     case TypedCallback::cb_order_cancel:
-      on_cancel(cb.order, cb.quantity);
       if(order_listener_)
       {
         order_listener_->on_cancel(cb.order);
       }
       break;
     case TypedCallback::cb_order_cancel_reject:
-      on_cancel_reject(cb.order, cb.reject_reason);
       if(order_listener_)
       {
         order_listener_->on_cancel_reject(cb.order, cb.reject_reason);
       }
       break;
     case TypedCallback::cb_order_replace:
-      on_replace(cb.order, 
-        cb.order->order_qty(), 
-        cb.order->order_qty() + cb.delta,
-        cb.price);
       if(order_listener_)
       {
         order_listener_->on_replace(cb.order,
@@ -1164,14 +1240,12 @@ OrderBook<OrderPtr>::perform_callback(TypedCallback& cb)
       }
       break;
     case TypedCallback::cb_order_replace_reject:
-      on_replace_reject(cb.order, cb.reject_reason);
       if(order_listener_)
       {
         order_listener_->on_replace_reject(cb.order, cb.reject_reason);
       }
       break;
     case TypedCallback::cb_book_update:
-      on_order_book_change();
       if(order_book_listener_)
       {
         order_book_listener_->on_order_book_change(this);

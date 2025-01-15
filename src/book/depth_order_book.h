@@ -91,21 +91,10 @@ DepthOrderBook<OrderPtr, SIZE>::on_accept(const OrderPtr& order, Quantity quanti
   // If the order is a limit order
   if (order->is_limit()) 
   {
-    // If the order is completely filled on acceptance, do not modify 
-    // depth unnecessarily
-    if (quantity == order->order_qty()) 
-    {
-      // Don't tell depth about this order - it's going away immediately.
-      // Instead tell Depth about future fills to ignore
-      depth_.ignore_fill_qty(quantity, order->is_buy());
-    } 
-    else 
-    {
-      // Add to bid or ask depth
-      depth_.add_order(order->price(), 
-        order->order_qty(), 
-        order->is_buy());
-    }
+    // Add to bid or ask depth
+    depth_.add_order(order->price(), 
+      order->order_qty(), 
+      order->is_buy());
   }
 }
 
@@ -140,13 +129,10 @@ template <class OrderPtr, int SIZE>
 void 
 DepthOrderBook<OrderPtr, SIZE>::on_cancel(const OrderPtr& order, Quantity quantity)
 {
-  // If the order is a limit order
-  if (order->is_limit()) {
-    // If the close erases a level
-    depth_.close_order(order->price(), 
-      quantity, 
-      order->is_buy());
-  }
+  // If the close erases a level
+  depth_.close_order(order->price(), 
+    quantity, 
+    order->is_buy());
 }
 
 template <class OrderPtr, int SIZE> 
